@@ -1,11 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Home</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Welcome to my Home page</h1>
-    <h1>This is Day 2 of my AI chatbot project.</h1>
-    <a href="/about">Go to About page</a>
+
+  <div class="chat-app">
+
+    <!-- Header -->
+    <header class="chat-header">
+      <h1>AI Chatbot</h1>
+    </header>
+
+    <!-- Message area -->
+    <main class="chat-window">
+
+      <div class="message bot-message">
+        <p>Hey! I'm your AI assistant. How can I help you today?</p>
+      </div>
+
+      <div class="message user-message">
+        <p>Can you explain what flexbox does?</p>
+      </div>
+
+      <div class="message bot-message">
+        <p>Sure! Flexbox is a CSS layout mode that makes it easy to align and distribute items in a container, even when their size is unknown.</p>
+      </div>
+
+      <div class="message user-message">
+        <p>That's exactly what I needed, thanks!</p>
+      </div>
+
+    </main>
+
+    <!-- Input bar -->
+    <footer class="chat-input-bar">
+      <input type="text" class="chat-input" placeholder="Type a message..." />
+      <button class="send-button">Send</button>
+    </footer>
+
+  </div>
+
 </body>
 </html>
