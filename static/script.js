@@ -66,3 +66,7 @@ chatInput.addEventListener('keydown', (event) => {
     handleSend();
   }
 });
+// Show a friendly greeting the moment the page loads — built the same
+// way as every other message (via addMessage), just triggered automatically
+// instead of by a click.
+addMessage("Hey! I'm your AI assistant. How can I help you today?", 'bot-message');

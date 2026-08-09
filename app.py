@@ -1,28 +1,53 @@
+import os
+import requests
 from flask import Flask, render_template, request, jsonify
+from dotenv import load_dotenv
+
+# Load the .env file so GEMINI_API_KEY becomes available via os.environ.
+load_dotenv()
 
 app = Flask(__name__)
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
+
 @app.route('/about')
 def about():
     return render_template('about.html')
 
+
 @app.route('/chat', methods=['POST'])
 def chat():
-    # Grab the JSON data the browser sent.
     data = request.get_json()
-
-    # Pull out the 'message' field. .get() is safer than data['message'] —
-    # it won't crash if the key is missing, it just returns None.
     user_message = data.get('message', '')
 
-    # For now we just echo it back. Real AI logic replaces this in Week 2.
-    reply_text = f"You said: {user_message}"
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY
+    }
 
-    # jsonify converts this Python dict into a proper JSON HTTP response.
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": user_message}
+                ]
+            }
+        ]
+    }
+
+    gemini_response = requests.post(GEMINI_URL, headers=headers, json=payload)
+    gemini_data = gemini_response.json()
+
+    reply_text = gemini_data["candidates"][0]["content"]["parts"][0]["text"]
+
     return jsonify({'reply': reply_text})
+
 
 app.run(debug=True)
