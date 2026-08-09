@@ -16,7 +16,7 @@
     </header>
 
     <!-- Message area -->
-    <main class="chat-window">
+    <main class="chat-window" id="chat-window">
 
       <div class="message bot-message">
         <p>Hey! I'm your AI assistant. How can I help you today?</p>
@@ -38,11 +38,13 @@
 
     <!-- Input bar -->
     <footer class="chat-input-bar">
-      <input type="text" class="chat-input" placeholder="Type a message..." />
-      <button class="send-button">Send</button>
+      <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." />
+      <button class="send-button" id="send-btn">Send</button>
     </footer>
 
   </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 
 </body>
 </html>
