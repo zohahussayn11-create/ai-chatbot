@@ -25,7 +25,9 @@ function addMessage(text, sender) {
 }
 
 // This function runs every time the user sends a message.
-function handleSend() {
+// It's 'async' because fetch() takes time (a real network request) and we
+// need to 'await' its result instead of moving on before it finishes.
+async function handleSend() {
   const text = chatInput.value.trim(); // .trim() removes accidental leading/trailing spaces
 
   // Don't send empty messages.
@@ -33,17 +35,26 @@ function handleSend() {
     return;
   }
 
-  // Add the user's message as a bubble on the right.
+  // Add the user's message as a bubble on the right, immediately.
   addMessage(text, 'user-message');
 
   // Clear the input box so it's ready for the next message.
   chatInput.value = '';
 
-  // NOTE: there's no real AI here yet — that comes on Day 8.
-  // For now we just fake a bot reply so the interaction feels complete.
-  setTimeout(() => {
-    addMessage("(This is a placeholder reply — real AI comes in Week 2!)", 'bot-message');
-  }, 500);
+  // Send the message to our Flask backend.
+  const response = await fetch('/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json' // tells Flask we're sending JSON
+    },
+    body: JSON.stringify({ message: text }) // JS object -> JSON string
+  });
+
+  // Convert Flask's JSON response back into a JS object.
+  const data = await response.json();
+
+  // data.reply is whatever Flask's jsonify({'reply': ...}) sent back.
+  addMessage(data.reply, 'bot-message');
 }
 
 // Run handleSend() when the button is clicked.
