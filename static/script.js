@@ -41,22 +41,35 @@ async function handleSend() {
   // Clear the input box so it's ready for the next message.
   chatInput.value = '';
 
-  // Send the message to our Flask backend.
-  const response = await fetch('/chat', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json' // tells Flask we're sending JSON
-    },
-    body: JSON.stringify({ message: text }) // JS object -> JSON string
-  });
+  try {
+    // Send the message to our Flask backend.
+    const response = await fetch('/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json' // tells Flask we're sending JSON
+      },
+      body: JSON.stringify({ message: text }) // JS object -> JSON string
+    });
 
-  // Convert Flask's JSON response back into a JS object.
-  const data = await response.json();
+    // Convert Flask's JSON response back into a JS object.
+    const data = await response.json();
 
-  // data.reply is whatever Flask's jsonify({'reply': ...}) sent back.
-  addMessage(data.reply, 'bot-message');
+    if (data.error) {
+      // Flask caught a problem (empty input, API failure, etc.) and sent
+      // back a friendly message in data.error instead of data.reply.
+      addMessage(data.error, 'bot-message');
+    } else {
+      // data.reply is whatever Flask's jsonify({'reply': ...}) sent back.
+      addMessage(data.reply, 'bot-message');
+    }
+
+  } catch (error) {
+    // This catches total failures — e.g. no internet connection at all,
+    // where fetch() itself throws instead of even reaching Flask.
+    addMessage("Something went wrong connecting to the server. Please try again.", 'bot-message');
+  }
 }
-
+addMessage("Hi! I'm your AI assistant. What help can I do for you today?", 'bot-message');
 // Run handleSend() when the button is clicked.
 sendBtn.addEventListener('click', handleSend);
 
@@ -66,7 +79,3 @@ chatInput.addEventListener('keydown', (event) => {
     handleSend();
   }
 });
-// Show a friendly greeting the moment the page loads — built the same
-// way as every other message (via addMessage), just triggered automatically
-// instead of by a click.
-addMessage("Hey! I'm your AI assistant. How can I help you today?", 'bot-message');
