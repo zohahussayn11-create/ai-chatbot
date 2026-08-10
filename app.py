@@ -41,7 +41,7 @@ def chat():
             }
         ]
     }
-
+ # Day 8: send the user's message to Gemini and get a real AI-generated reply
     gemini_response = requests.post(GEMINI_URL, headers=headers, json=payload)
     gemini_data = gemini_response.json()
 
