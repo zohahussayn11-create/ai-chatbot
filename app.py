@@ -10,6 +10,12 @@ app = Flask(__name__)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 
+# Day 10: a simple in-memory conversation history.
+# This is just a Python list living in RAM while the server runs.
+# It resets every time you restart Flask, and it's shared by anyone
+# using the app (fine for a solo portfolio project, not for multi-user production).
+conversation_history = []
+
 
 @app.route('/')
 def home():
@@ -26,48 +32,46 @@ def chat():
     data = request.get_json(silent=True) or {}
     user_message = data.get('message', '').strip()
 
-    # 1. Handle empty input before ever calling the API
     if not user_message:
         return jsonify({'error': "Please type a message before sending."}), 400
+
+    # Add the user's new message to the running history
+    conversation_history.append({
+        "role": "user",
+        "parts": [{"text": user_message}]
+    })
 
     headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": GEMINI_API_KEY
     }
 
+    # Day 10: send the FULL history, not just the latest message,
+    # so Gemini has context of the whole conversation so far.
     payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": user_message}
-                ]
-            }
-        ]
+        "contents": conversation_history
     }
 
     try:
-        # 2. Always set a timeout so a hung request doesn't hang your server
         gemini_response = requests.post(
             GEMINI_URL, headers=headers, json=payload, timeout=15
         )
-
-        # 3. Raise an exception if Gemini returned a 4xx/5xx status
         gemini_response.raise_for_status()
-
         gemini_data = gemini_response.json()
-
-        # 4. Guard against an unexpected response shape
         reply_text = gemini_data["candidates"][0]["content"]["parts"][0]["text"]
+
+        # Add the bot's reply to the history too, so future requests
+        # include it as context.
+        conversation_history.append({
+            "role": "model",
+            "parts": [{"text": reply_text}]
+        })
 
     except requests.exceptions.Timeout:
         return jsonify({'error': "The AI is taking too long to respond. Please try again."}), 504
 
     except requests.exceptions.HTTPError:
-        # This fires from raise_for_status() above
         status = gemini_response.status_code
-        print("GEMINI ERROR STATUS:", status)
-        print("GEMINI ERROR BODY:", gemini_response.text)
-    
         if status == 401:
             return jsonify({'error': "Server configuration error. Please contact the site owner."}), 500
         elif status == 429:
@@ -76,11 +80,9 @@ def chat():
             return jsonify({'error': "The AI service returned an error. Please try again."}), 502
 
     except requests.exceptions.RequestException:
-        # Catches connection errors, DNS failures, etc.
         return jsonify({'error': "Couldn't reach the AI service. Check your connection and try again."}), 502
 
     except (KeyError, IndexError):
-        # gemini_data came back but not in the shape we expected
         return jsonify({'error': "Got an unexpected response from the AI. Please try again."}), 502
 
     return jsonify({'reply': reply_text})

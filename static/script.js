@@ -76,6 +76,54 @@ sendBtn.addEventListener('click', handleSend);
 // Also run it when the user presses Enter while typing in the input box.
 chatInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
-    handleSend();
+    async function handleSend() {
+  const text = chatInput.value.trim();
+
+  if (text === '') {
+    return;
+  }
+
+  addMessage(text, 'user-message');
+  chatInput.value = '';
+
+  // NEW: show the typing indicator bubble
+  const typingBubble = showTypingIndicator();
+
+  try {
+    const response = await fetch('/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message: text })
+    });
+
+    const data = await response.json();
+
+    // NEW: remove the typing indicator now that we have a real response
+    typingBubble.remove();
+
+    if (data.error) {
+      addMessage(data.error, 'bot-message');
+    } else {
+      addMessage(data.reply, 'bot-message');
+    }
+
+  } catch (error) {
+    // NEW: also remove it if the request totally failed
+    typingBubble.remove();
+    addMessage("Something went wrong connecting to the server. Please try again.", 'bot-message');
+  }
+}
+
+// NEW: builds and inserts the typing indicator, returns it so we can remove it later
+function showTypingIndicator() {
+  const typingDiv = document.createElement('div');
+  typingDiv.classList.add('message', 'bot-message', 'typing-indicator');
+  typingDiv.innerHTML = '<span></span><span></span><span></span>';
+  chatWindow.appendChild(typingDiv);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+  return typingDiv;
+}
   }
 });
