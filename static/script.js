@@ -70,7 +70,7 @@ async function handleSend() {
   }
 }
 addMessage("Hi! I'm your AI assistant. What help can I do for you today?", 'bot-message');
-// Run handleSend() when the button is clicked.
+// Run handleSend() when the button is clicke d.
 sendBtn.addEventListener('click', handleSend);
 
 // Also run it when the user presses Enter while typing in the input box.
@@ -82,7 +82,7 @@ chatInput.addEventListener('keydown', (event) => {
   if (text === '') {
     return;
   }
-
+ 
   addMessage(text, 'user-message');
   chatInput.value = '';
 

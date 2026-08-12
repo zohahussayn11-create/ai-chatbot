@@ -1,92 +1,118 @@
 import os
+import uuid
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, session, render_template
 from dotenv import load_dotenv
+import db  # Day 11 — our sqlite helper module
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 
-# Day 10: a simple in-memory conversation history.
-# This is just a Python list living in RAM while the server runs.
-# It resets every time you restart Flask, and it's shared by anyone
-# using the app (fine for a solo portfolio project, not for multi-user production).
-conversation_history = []
+SYSTEM_PROMPT = "You are a helpful, friendly assistant."
+
+# Day 11 — create the table on startup (safe to call every time,
+# it only creates the table if it doesn't already exist)
+db.init_db()
 
 
-@app.route('/')
+def get_session_id():
+    """
+    Give each browser session its own id, so multiple users (or tabs)
+    don't share the same chat history.
+    """
+    if "session_id" not in session:
+        session["session_id"] = str(uuid.uuid4())
+    return session["session_id"]
+
+
+def history_to_gemini_contents(history):
+    """
+    Gemini's API expects conversation history in this shape:
+    [{"role": "user"/"model", "parts": [{"text": "..."}]}, ...]
+
+    Our db.py stores roles as "user"/"assistant" (the Anthropic/OpenAI
+    convention), so we translate "assistant" -> "model" here.
+    """
+    contents = []
+    for msg in history:
+        role = "model" if msg["role"] == "assistant" else "user"
+        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+    return contents
+
+
+@app.route("/")
 def home():
-    return render_template('home.html')
+    return render_template("home.html")
 
 
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-
-@app.route('/chat', methods=['POST'])
+@app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json(silent=True) or {}
-    user_message = data.get('message', '').strip()
+    data = request.get_json(silent=True)
 
-    if not user_message:
-        return jsonify({'error': "Please type a message before sending."}), 400
+    if not data or not data.get("message", "").strip():
+        return jsonify({"error": "Message cannot be empty"}), 400
 
-    # Add the user's new message to the running history
-    conversation_history.append({
-        "role": "user",
-        "parts": [{"text": user_message}]
-    })
+    user_message = data["message"].strip()
+    session_id = get_session_id()
+
+    # Save the user's message to the database
+    db.save_message(session_id, "user", user_message)
+
+    # Load full history from the database (includes the message we just saved)
+    history = db.get_history(session_id)
+    contents = history_to_gemini_contents(history)
 
     headers = {
         "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY
+        "x-goog-api-key": GEMINI_API_KEY,
     }
-
-    # Day 10: send the FULL history, not just the latest message,
-    # so Gemini has context of the whole conversation so far.
     payload = {
-        "contents": conversation_history
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": contents,
     }
 
     try:
-        gemini_response = requests.post(
-            GEMINI_URL, headers=headers, json=payload, timeout=15
-        )
-        gemini_response.raise_for_status()
-        gemini_data = gemini_response.json()
-        reply_text = gemini_data["candidates"][0]["content"]["parts"][0]["text"]
+        response = requests.post(GEMINI_URL, headers=headers, json=payload, timeout=30)
+        response_data = response.json()
 
-        # Add the bot's reply to the history too, so future requests
-        # include it as context.
-        conversation_history.append({
-            "role": "model",
-            "parts": [{"text": reply_text}]
-        })
+        if response.status_code != 200:
+            print("Gemini API error:", response_data)
+            return jsonify({"error": "The AI service is having trouble right now. Please try again."}), 502
 
-    except requests.exceptions.Timeout:
-        return jsonify({'error': "The AI is taking too long to respond. Please try again."}), 504
+        reply_text = response_data["candidates"][0]["content"]["parts"][0]["text"]
 
-    except requests.exceptions.HTTPError:
-        status = gemini_response.status_code
-        if status == 401:
-            return jsonify({'error': "Server configuration error. Please contact the site owner."}), 500
-        elif status == 429:
-            return jsonify({'error': "Too many requests right now. Please wait a moment and try again."}), 429
-        else:
-            return jsonify({'error': "The AI service returned an error. Please try again."}), 502
+    except requests.exceptions.RequestException as e:
+        print("Request failed:", e)
+        return jsonify({"error": "The AI service is having trouble right now. Please try again."}), 502
+    except (KeyError, IndexError) as e:
+        print("Unexpected response shape:", e, response_data)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
-    except requests.exceptions.RequestException:
-        return jsonify({'error': "Couldn't reach the AI service. Check your connection and try again."}), 502
+    # Save the assistant's reply too, so it's part of history next time
+    db.save_message(session_id, "assistant", reply_text)
 
-    except (KeyError, IndexError):
-        return jsonify({'error': "Got an unexpected response from the AI. Please try again."}), 502
-
-    return jsonify({'reply': reply_text})
+    return jsonify({"reply": reply_text})
 
 
-if __name__ == '__main__':
+@app.route("/history", methods=["GET"])
+def history():
+    """Optional: lets the frontend reload past messages on page refresh."""
+    session_id = get_session_id()
+    return jsonify({"history": db.get_history(session_id)})
+
+
+@app.route("/new-chat", methods=["POST"])
+def new_chat():
+    """Optional: a 'New chat' button can hit this to clear history."""
+    session_id = get_session_id()
+    db.clear_history(session_id)
+    return jsonify({"status": "cleared"})
+
+
+if __name__ == "__main__":
     app.run(debug=True)
