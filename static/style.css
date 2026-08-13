@@ -155,3 +155,108 @@ body {
     opacity: 1;
   }
 }
+/* ===== Day 14 additions: timestamps + extra mobile polish ===== */
+
+/* Each bubble becomes a small vertical stack: text, then timestamp */
+.message {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-text {
+  white-space: pre-wrap; /* respects line breaks in longer AI replies */
+  word-break: break-word;
+}
+
+.message-time {
+  font-size: 10px;
+  margin-top: 4px;
+  opacity: 0.6;
+}
+
+.user-message .message-time {
+  align-self: flex-end;
+  color: #e5e5ff;
+}
+
+.bot-message .message-time {
+  align-self: flex-start;
+  color: #6b7280;
+}
+
+/* Extra mobile-friendly tweaks */
+@media (max-width: 500px) {
+  .chat-header h1 {
+    font-size: 16px;
+  }
+
+  .message {
+    max-width: 85%;
+    font-size: 15px; /* slightly larger for readability on small screens */
+  }
+
+  .chat-input {
+    font-size: 16px; /* prevents iOS Safari from auto-zooming in on focus */
+  }
+
+  .send-button {
+    padding: 10px 16px;
+  }
+}
+/* ===== Markdown rendering inside bot bubbles ===== */
+
+/* Reset default browser spacing on markdown elements so they fit a chat bubble */
+.message-text h1,
+.message-text h2,
+.message-text h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.message-text p {
+  margin: 0 0 8px;
+}
+
+.message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.message-text ul,
+.message-text ol {
+  margin: 4px 0 8px 18px;
+}
+
+.message-text li {
+  margin-bottom: 4px;
+}
+
+.message-text strong {
+  font-weight: 700;
+}
+
+.message-text code {
+  background-color: rgba(0, 0, 0, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: "SF Mono", Consolas, monospace;
+}
+
+.message-text pre {
+  background-color: rgba(0, 0, 0, 0.08);
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.message-text pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.message-text a {
+  color: inherit;
+  text-decoration: underline;
+}
