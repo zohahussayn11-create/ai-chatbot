@@ -4,6 +4,9 @@ const chatWindow = document.querySelector('#chat-window');
 const chatInput = document.querySelector('#chat-input');
 const sendBtn = document.querySelector('#send-btn');
 
+// Longest message we'll allow the user to send (matches the limit enforced in app.py).
+const MAX_MESSAGE_LENGTH = 2000;
+
 // Builds a short "3:45 PM" style timestamp for the current moment.
 function getTimestamp() {
   return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -58,6 +61,18 @@ function showTypingIndicator() {
   return typingDiv;
 }
 
+// Locks or unlocks the input box and send button.
+// We disable both while waiting for a reply so rapid clicking/Enter-spamming
+// can't fire off multiple overlapping requests at once.
+function setInputEnabled(enabled) {
+  chatInput.disabled = !enabled;
+  sendBtn.disabled = !enabled;
+  sendBtn.textContent = enabled ? 'Send' : '...';
+  if (enabled) {
+    chatInput.focus();
+  }
+}
+
 // This function runs every time the user sends a message (click OR Enter key).
 // It's 'async' because fetch() takes time (a real network request) and we
 // need to 'await' its result instead of moving on before it finishes.
@@ -69,11 +84,21 @@ async function handleSend() {
     return;
   }
 
+  // Don't send messages that are way too long — cap it client-side too,
+  // so the user gets instant feedback instead of waiting for the server to reject it.
+  if (text.length > MAX_MESSAGE_LENGTH) {
+    addMessage(`That message is too long (${text.length}/${MAX_MESSAGE_LENGTH} characters). Please shorten it.`, 'bot-message');
+    return;
+  }
+
   // Add the user's message as a bubble on the right, immediately.
   addMessage(text, 'user-message');
 
   // Clear the input box so it's ready for the next message.
   chatInput.value = '';
+
+  // Lock the input + button so this request can't overlap with another one.
+  setInputEnabled(false);
 
   // Show the animated typing indicator while we wait for a reply.
   const typingBubble = showTypingIndicator();
@@ -108,6 +133,9 @@ async function handleSend() {
     // where fetch() itself throws instead of even reaching Flask.
     typingBubble.remove();
     addMessage("Something went wrong connecting to the server. Please try again.", 'bot-message');
+  } finally {
+    // Always unlock the input again, whether the request succeeded or failed.
+    setInputEnabled(true);
   }
 }
 

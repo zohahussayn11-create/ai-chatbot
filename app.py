@@ -13,6 +13,10 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 
+# Day 15 — cap how long a single message can be, to avoid huge/abusive
+# requests hitting the API. Keep this in sync with MAX_MESSAGE_LENGTH in script.js.
+MAX_MESSAGE_LENGTH = 2000
+
 SYSTEM_PROMPT = """You are StudyBuddy, a friendly and encouraging AI study companion.
 You help students understand concepts across all subjects — math, science,
 history, languages, and especially programming/coding.
@@ -72,6 +76,14 @@ def chat():
         return jsonify({"error": "Message cannot be empty"}), 400
 
     user_message = data["message"].strip()
+
+    # Day 15 — reject messages that are way too long, even if the frontend
+    # check was somehow bypassed (e.g. someone calling /chat directly).
+    if len(user_message) > MAX_MESSAGE_LENGTH:
+        return jsonify({
+            "error": f"Message is too long ({len(user_message)}/{MAX_MESSAGE_LENGTH} characters). Please shorten it."
+        }), 400
+
     session_id = get_session_id()
 
     # Save the user's message to the database

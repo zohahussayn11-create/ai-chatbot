@@ -260,3 +260,14 @@ body {
   color: inherit;
   text-decoration: underline;
 }
+/* ===== Day 15: disabled state while waiting for a reply ===== */
+
+.chat-input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.send-button:disabled {
+  background-color: #a5a5c9;
+  cursor: not-allowed;
+}
