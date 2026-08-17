@@ -12,6 +12,57 @@ function getTimestamp() {
   return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+// A small, self-contained Markdown formatter — handles just the patterns
+// Gemini commonly uses in replies (bold, headings, bullet lists, line breaks).
+// This avoids depending on an external library/CDN, which can be blocked or
+// fail to load depending on the hosting environment.
+function formatBotText(text) {
+  // Escape any raw HTML characters first, so the user's/AI's text can never
+  // accidentally inject real HTML tags — safety first, formatting second.
+  let safe = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // **bold** -> <strong>bold</strong>
+  safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // ### Heading -> <h3>Heading</h3>  (also handles #, ##)
+  safe = safe.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+  safe = safe.replace(/^## (.*)$/gm, '<h3>$1</h3>');
+  safe = safe.replace(/^# (.*)$/gm, '<h3>$1</h3>');
+
+  // Lines starting with "- " or "* " become bullet points.
+  // We wrap consecutive bullet lines in a single <ul>.
+  const lines = safe.split('\n');
+  let html = '';
+  let inList = false;
+
+  for (const line of lines) {
+    const bulletMatch = line.match(/^[-*] (.*)$/);
+    if (bulletMatch) {
+      if (!inList) {
+        html += '<ul>';
+        inList = true;
+      }
+      html += `<li>${bulletMatch[1]}</li>`;
+    } else {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      if (line.trim() !== '') {
+        html += `<p>${line}</p>`;
+      }
+    }
+  }
+  if (inList) {
+    html += '</ul>';
+  }
+
+  return html;
+}
+
 // This function builds a new message bubble (with a timestamp) and adds it to the chat window.
 function addMessage(text, sender) {
   // Create a new <div> element in memory (not on the page yet).
@@ -26,10 +77,9 @@ function addMessage(text, sender) {
   textSpan.classList.add('message-text');
 
   if (sender === 'bot-message') {
-    // Bot replies often contain Markdown (**, ###, lists, etc).
-    // marked.parse() converts that Markdown into real HTML so it renders
-    // properly instead of showing the raw symbols.
-    textSpan.innerHTML = marked.parse(text);
+    // Bot replies often contain simple Markdown (**, ###, lists).
+    // formatBotText() converts that into real HTML so it renders properly.
+    textSpan.innerHTML = formatBotText(text);
   } else {
     // User input stays as plain text (textContent, not innerHTML) —
     // this avoids ever accidentally running HTML/JS someone typed.
