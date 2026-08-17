@@ -79,16 +79,16 @@ Open `http://127.0.0.1:5000` in your browser.
 
 ## Project structure
 
-├── app.py # Flask routes, session handling, Gemini API calls, system prompt
-├── db.py # SQLite helper functions (init, save, get, clear history)
+├── app.py                   # Flask routes, session handling, Gemini API calls, system prompt
+├── db.py                    # SQLite helper functions (init, save, get, clear history)
 ├── templates/
-│ ├── home.html # Main chat UI
-│ └── about.html
+│   ├── home.html            # Main chat UI
+│   └── about.html
 ├── static/
-│ ├── style.css # Chat window styling, typing indicator, markdown formatting
-│ └── script.js # Frontend logic: sending messages, rendering replies, validation
+│   ├── style.css            # Chat window styling, typing indicator, markdown formatting
+│   └── script.js            # Frontend logic: sending messages, rendering replies, validation
 ├── requirements.txt
-├── .env # API key (not tracked in git)
+├── .env                      # API key (not tracked in git)
 └── .gitignore
 
 
